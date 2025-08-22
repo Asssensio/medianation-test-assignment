@@ -76,7 +76,6 @@ jobs:
             set -e
             cd "${{ vars.PROJECT_DIR }}"
             mkdir -p logs/app logs/postgres
-            chmod 0777 logs/postgres || true
 
             # --- .env формируем на сервере из Secrets/Variables ---
             echo "DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}" > .env
