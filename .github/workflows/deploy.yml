@@ -71,6 +71,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           port: ${{ secrets.SERVER_PORT }}
           key:  ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: DOCKERHUB_USERNAME,POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD
           script: |
             set -e
             cd "${{ vars.PROJECT_DIR }}"
