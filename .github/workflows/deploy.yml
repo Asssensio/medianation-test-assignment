@@ -28,7 +28,7 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/medianation-app:latest
 
-  # --- CD: выкладка на сервер + smoke-тест ---
+  # --- CD: выкладка на сервер + простой smoke-тест ---
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -36,30 +36,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # гарантируем, что каталог на сервере существует (scp сам его не создаёт)
+      # создаем каталог на сервере
       - name: Ensure project dir exists
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           port: ${{ secrets.SERVER_PORT }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key:  ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             mkdir -p "${{ vars.PROJECT_DIR }}"
 
-      # копируем prod compose на сервер
+      # копируем prod-compose на сервер
       - name: Copy production compose via scp
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           port: ${{ secrets.SERVER_PORT }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key:  ${{ secrets.SSH_PRIVATE_KEY }}
           source: "docker-compose.prod.yml"
           target: "${{ vars.PROJECT_DIR }}"
 
       # деплой + smoke-тест
-      - name: Deploy via SSH
+      - name: Deploy application via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -76,19 +76,16 @@ jobs:
             cd "${{ vars.PROJECT_DIR }}"
             mkdir -p logs/app logs/postgres
 
-            # .env собираем на сервере из Secrets/Variables
-            printf "%s\n" \
-              "DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}" \
-              "POSTGRES_DB=${POSTGRES_DB}" \
-              "POSTGRES_USER=${POSTGRES_USER}" \
-              "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" \
-              > .env
+            # --- .env формируем на сервере из Secrets/Variables ---
+            echo "DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}" > .env
+            echo "POSTGRES_DB=${POSTGRES_DB}"           >> .env
+            echo "POSTGRES_USER=${POSTGRES_USER}"       >> .env
+            echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" >> .env
 
             # тянем образ и поднимаем стек
             docker pull "${DOCKERHUB_USERNAME}/medianation-app:latest"
             docker compose -f docker-compose.prod.yml up -d
 
-            # --- SMOKЕ-ТЕСТ ---
-            # даём сервису стартануть и один раз проверяем /posts
+            # --- SMOKE-ТЕСТ ---
             sleep 25
             docker run --rm --network host curlimages/curl:8.7.1 -f http://127.0.0.1:8080/posts
