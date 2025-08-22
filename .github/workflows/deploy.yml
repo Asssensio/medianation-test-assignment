@@ -1,0 +1,88 @@
+name: CI/CD Pipeline for Blog Application
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  # CI: сборка и публикация образа
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      # Берём код
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Логинимся в реестр контейнеров
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Buildx для кросс-сборки и кеша
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Сборка и публикация образа
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/medianation-app:latest
+
+  # CD: выкладка на сервер
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Готовим директорию на сервере заранее, чтобы scp не споткнулся
+      - name: Ensure project dir exists
+        uses: appleboy/ssh-action@v1.0.3      
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          port: ${{ secrets.SERVER_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p "${{ vars.PROJECT_DIR }}"
+
+      # Копируем prod-compose на сервер
+      - name: Copy production compose file via scp
+        uses: appleboy/scp-action@v0.1.7       # фиксируем версию
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          port: ${{ secrets.SERVER_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "${{ vars.PROJECT_DIR }}"
+
+      # Применяем обновление
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          port: ${{ secrets.SERVER_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd "${{ vars.PROJECT_DIR }}"
+            mkdir -p logs/app logs/postgres
+
+            # Обновляем .env из секретов/переменных
+            cat > .env <<EOF
+DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+POSTGRES_DB=${{ vars.POSTGRES_DB || 'blog_db' }}
+POSTGRES_USER=${{ vars.POSTGRES_USER || 'admin' }}
+POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+EOF
+
+            # Тянем свежий образ и поднимаем стек
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/medianation-app:latest
+            docker compose -f docker-compose.prod.yml up -d

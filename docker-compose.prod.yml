@@ -1,0 +1,45 @@
+services:
+  app:
+    image: ${DOCKERHUB_USERNAME}/medianation-app:latest
+    container_name: blog-app
+    ports:
+      - "8080:80"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      LOG_DIR: /logs/app
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./logs/app:/logs/app
+    restart: unless-stopped
+
+  db:
+    image: postgres:14-alpine
+    container_name: blog-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./logs/postgres:/var/lib/postgresql/data/pg_log
+    command: >
+      postgres
+      -c logging_collector=on
+      -c log_directory=pg_log
+      -c log_filename='postgresql-%a.log'
+      -c log_truncate_on_rotation=on
+      -c log_rotation_age=1d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

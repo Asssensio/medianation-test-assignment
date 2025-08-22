@@ -1,42 +1,42 @@
 services:
-  # --- СЕРВИС ПРИЛОЖЕНИЯ ---
   app:
-    # Собираем образ из Dockerfile в текущей директории
     build: .
-    # Даем контейнеру понятное имя
     container_name: blog-app
-    # Пробрасываем порт 8080 с нашего компьютера на порт 80 внутри контейнера
     ports:
       - "8080:80"
-    # Переменные окружения, которые будут доступны нашему Python-коду
     environment:
-      PYTHONUNBUFFERED: 1
-      POSTGRES_HOST: db # Имя хоста (сервера) базы данных (совпадает с именем сервиса 'db')
-      POSTGRES_DB: blog_db # Название базы данных
-      POSTGRES_USER: admin # Имя пользователя
-      POSTGRES_PASSWORD: qwerty_18.08.2025 # Пароль
-    # Указываем, что наш сервис должен запускаться только ПОСЛЕ полного старта 'db'
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./logs/app:/logs/app
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
-  # --- СЕРВИС БАЗЫ ДАННЫХ ---
   db:
-    # Используем официальный образ PostgreSQL
     image: postgres:14-alpine
-    # Даем контейнеру понятное имя
     container_name: blog-db
-    # Переменные для инициализации базы данных при первом запуске
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: qwerty_18.08.2025
-      POSTGRES_DB: blog_db
-    # --- Сохранение данных ---
-    # Создаем "том" (volume) с именем pgdata и "монтируем" его в папку внутри контейнера,
-    # где PostgreSQL хранит свои данные. Это гарантирует, что данные сохранятся.
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./logs/postgres:/var/lib/postgresql/data/pg_log
+    command: >
+      postgres
+      -c logging_collector=on
+      -c log_directory=pg_log
+      -c log_filename='postgresql-%a.log'
+      -c log_truncate_on_rotation=on
+      -c log_rotation_age=1d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-# --- Определение томов (volumes) ---
-# Здесь мы официально "объявляем" наш том, чтобы Docker знал о нем.
 volumes:
   pgdata:
