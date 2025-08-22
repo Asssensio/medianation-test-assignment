@@ -17,17 +17,29 @@
 **Быстрый старт (локально)**
 
 1. Создайте `.env` в корне:
+
+```
 POSTGRES_HOST=db
 POSTGRES_DB=blog_db
 POSTGRES_USER=admin
 POSTGRES_PASSWORD=change_me
+```
 
-2. (Опционально) подготовьте точки логов: `mkdir -p logs/app logs/postgres`
+2. (Опционально) подготовьте точки логов:
 
-3. Запуск: `docker compose up -d --build`
+```
+mkdir -p logs/app logs/postgres
+```
+
+3. Запуск:
+
+```
+docker compose up -d --build
+```
 
 4. Проверка:
-* Swagger UI: [http://localhost:8080/docs]
+
+* Swagger UI: [http://localhost:8080/docs](http://localhost:8080/docs)
 * Журнал приложения: `docker compose logs -f app`
 * Остановка: `docker compose down`
 
@@ -36,20 +48,38 @@ POSTGRES_PASSWORD=change_me
 **Описание API (примеры запросов/ответов)**
 
 `GET /posts`
-Ответ 200: []
+
+Ответ 200:
+
+```
+[]
+```
 
 `POST /posts`
-Пример запроса: {"title":"Hello","content":"World"}
-Пример ответа 200: {"id":1,"title":"Hello","content":"World"}
+
+Пример запроса:
+
+```
+{"title":"Hello","content":"World"}
+```
+
+Пример ответа 200:
+
+```
+{"id":1,"title":"Hello","content":"World"}
+```
 
 Примеры команд:
+
+```
 curl -X POST http://localhost:8080/posts \
   -H 'Content-Type: application/json' \
   -d '{"title":"Hello","content":"World"}'
 
 curl http://localhost:8080/posts
+```
 
----------------------------------------------------------------------------------------
+---
 
 **Данные и логи**
 
@@ -60,12 +90,18 @@ curl http://localhost:8080/posts
 ---
 
 **Smoke‑тест**
+
+```
+# после запуска локально или деплоя на сервер
 curl -X POST http://<host>:8080/posts \
   -H 'Content-Type: application/json' \
   -d '{"title":"Smoke","content":"Test"}'
 
 curl http://<host>:8080/posts
+# ожидаем увидеть созданную запись в списке
+```
 
+---------------------------------------------------------------------------------------
 
 **CI/CD**
 
@@ -97,9 +133,11 @@ curl http://<host>:8080/posts
 
 **Структура**
 
+```
 ├─ app/main.py                  # FastAPI + psycopg
 ├─ logs/                        # для логов
 ├─ Dockerfile                   # образ приложения
 ├─ docker-compose.yml           # dev: build из исходников
 ├─ docker-compose.prod.yml      # prod: запуск готового образа
 └─ .github/workflows/deploy.yml # CI/CD
+```
