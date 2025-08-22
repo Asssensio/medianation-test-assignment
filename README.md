@@ -1,7 +1,7 @@
 ## **Mini Blog API - FastAPI · Uvicorn · PostgreSQL · psycopg3 · Docker/Compose · GitHub Actions**
 
 `GET /posts` — список публикаций
-`POST /posts` — сoзданиe публикации
+`POST /posts` — созданиe публикации
 
 ---------------------------------------------------------------------------------------
 
