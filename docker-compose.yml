@@ -24,11 +24,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./logs/postgres:/var/lib/postgresql
+      - ./logs/postgres:/var/lib/postgresql/data/pg_log
     command: >
       postgres
       -c logging_collector=on
-      -c log_directory=/var/log/postgresql
+      -c log_directory=/var/log/postgresql/data/pg_log
       -c log_filename='postgresql-%a.log'
       -c log_truncate_on_rotation=on
       -c log_rotation_age=1d
