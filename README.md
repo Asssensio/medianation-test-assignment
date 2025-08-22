@@ -1,143 +1,169 @@
-## **Mini Blog API - FastAPI · Uvicorn · PostgreSQL · psycopg3 · Docker/Compose · GitHub Actions**
+# Mini Blog API — FastAPI · PostgreSQL · Docker · GitHub Actions
 
 `GET /posts` — список публикаций
-`POST /posts` — созданиe публикации
+`POST /posts` — создание публикации
 
----------------------------------------------------------------------------------------
+[![CI/CD](https://github.com/Asssensio/medianation-test-assignment/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/Asssensio/medianation-test-assignment/actions/workflows/deploy.yml)
 
-**Список технологий**
+---
+
+## Live demo
+
+* Swagger UI (prod): **[http://45.141.78.45:8080/docs](http://45.141.78.45:8080/docs)**
+* Быстрый тест:
+
+  ```bash
+  curl -sS -X POST http://45.141.78.45:8080/posts \
+    -H 'Content-Type: application/json' \
+    -d '{"title":"Hello","content":"World"}'
+
+  curl -sS http://45.141.78.45:8080/posts
+  ```
+
+> Примечание: demo-сервер учебный; база может периодически очищаться.
+
+---
+
+## Технологии
 
 * FastAPI, Uvicorn
-* PostgreSQL, psycopg (v3)
-* Docker, Docker Compose
+* PostgreSQL + psycopg3
+* Docker & Docker Compose
 * GitHub Actions (CI/CD)
 
----------------------------------------------------------------------------------------
+---
 
-**Быстрый старт (локально)**
+## Локальный запуск
 
 1. Создайте `.env` в корне:
 
-```
+```env
 POSTGRES_HOST=db
 POSTGRES_DB=blog_db
 POSTGRES_USER=admin
 POSTGRES_PASSWORD=change_me
 ```
 
-2. (Опционально) подготовьте точки логов:
+2. (Опционально) подготовьте папки логов:
 
-```
+```bash
 mkdir -p logs/app logs/postgres
 ```
 
 3. Запуск:
 
-```
+```bash
 docker compose up -d --build
 ```
 
 4. Проверка:
 
-* Swagger UI: [http://localhost:8080/docs](http://localhost:8080/docs)
-* Журнал приложения: `docker compose logs -f app`
+* Swagger: [http://localhost:8080/docs](http://localhost:8080/docs)
+* Логи приложения: `docker compose logs -f app`
 * Остановка: `docker compose down`
 
----------------------------------------------------------------------------------------
+---
 
-**Описание API (примеры запросов/ответов)**
+## API
 
-`GET /posts`
+### GET /posts → 200
 
-Ответ 200:
-
-```
-[]
-```
-
-`POST /posts`
-
-Пример запроса:
-
-```
-{"title":"Hello","content":"World"}
+```json
+[
+  { "id": 1, "title": "Hello", "content": "World" }
+]
 ```
 
-Пример ответа 200:
+### POST /posts → 200
 
-```
-{"id":1,"title":"Hello","content":"World"}
+Request:
+
+```json
+{ "title": "Hello", "content": "World" }
 ```
 
-Примеры команд:
+Response:
 
+```json
+{ "id": 1, "title": "Hello", "content": "World" }
 ```
-curl -X POST http://localhost:8080/posts \
+
+CLI примеры:
+
+```bash
+curl -sS -X POST http://localhost:8080/posts \
   -H 'Content-Type: application/json' \
   -d '{"title":"Hello","content":"World"}'
 
-curl http://localhost:8080/posts
+curl -sS http://localhost:8080/posts
 ```
 
 ---
 
-**Данные и логи**
+## Данные и логи
 
-* Данные БД: volume `pgdata` (`/var/lib/postgresql/data`).
-* Логи приложения: на хосте `./logs/app/app.log`.
-* Логи PostgreSQL: на хосте `./logs/postgres` (включена файловая запись и суточная ротация).
+* Данные БД: volume `pgdata` → `/var/lib/postgresql/data` (переживают перезапуск).
+* Логи приложения: `./logs/app/app.log` (монтирование `/logs/app`).
+* Логи PostgreSQL: `./logs/postgres` (включён `logging_collector` + ротация).
 
 ---
 
-**Smoke‑тест**
+## Smoke‑тест
 
-```
-# после запуска локально или деплоя на сервер
-curl -X POST http://<host>:8080/posts \
+```bash
+# после локального запуска или деплоя на сервер
+curl -sS -X POST http://<host>:8080/posts \
   -H 'Content-Type: application/json' \
   -d '{"title":"Smoke","content":"Test"}'
 
-curl http://<host>:8080/posts
-# ожидаем увидеть созданную запись в списке
+curl -sS http://<host>:8080/posts
+# запись должна появиться в списке
 ```
 
----------------------------------------------------------------------------------------
+---
 
-**CI/CD**
+## CI/CD (GitHub Actions)
 
-Пайплайн `.github/workflows/deploy.yml` при пуше в `main`:
+Пайплайн `.github/workflows/deploy.yml` срабатывает на `push` в `main`:
 
-1. Сборка Docker‑образа и push в Docker Hub: `${DOCKERHUB_USERNAME}/medianation-app:latest`
-2. Подключение по SSH к серверу, генерация `.env`
-3. `docker pull` + `docker compose -f docker-compose.prod.yml up -d`
+1. **CI:** собирает Docker-образ и пушит в Docker Hub → `${DOCKERHUB_USERNAME}/medianation-app:latest`.
+2. **CD:** по SSH заходит на сервер, генерирует `.env` из Secrets/Variables, делает `docker pull` и `docker compose -f docker-compose.prod.yml up -d`.
+3. **Smoke-тест:** `curl http://127.0.0.1:8080/posts` на сервере. Если недоступно — job падает.
 
-**Secrets:**
+Запустить деплой вручную:
+
+```bash
+git commit --allow-empty -m "ci: trigger"
+git push
+```
+
+### Secrets (Settings → Secrets and variables → Actions)
 
 * `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
 * `SERVER_HOST`, `SERVER_PORT`, `SERVER_USER`, `SSH_PRIVATE_KEY`
 * `POSTGRES_PASSWORD`
 
-**Variables:**
+### Variables
 
-* `PROJECT_DIR` (пример: `/opt/medianation-app`)
-* `POSTGRES_DB` (пример: `blog_db`)
-* `POSTGRES_USER` (пример: `admin`)
+* `PROJECT_DIR` (напр. `/opt/medianation-app`)
+* `POSTGRES_DB` (напр. `blog_db`)
+* `POSTGRES_USER` (напр. `admin`)
 
-**Требования к серверу**
+### Требования к серверу
 
-* Установлены Docker и Docker Compose
-* Пользователь в группе `docker`
-* Каталог `${PROJECT_DIR}` существует и доступен пользователю
+* Docker + Docker Compose установлены, пользователь в группе `docker`
+* Папка `${PROJECT_DIR}` существует и доступна
+* Открыт порт `8080` (или проброшен в файрволле)
 
----------------------------------------------------------------------------------------
+---
 
-**Структура**
+## Структура проекта
 
 ```
-├─ app/main.py                  # FastAPI + psycopg
-├─ logs/                        # для логов
+├─ app/main.py                  # FastAPI + psycopg3 (без ORM)
+├─ logs/                        # точки монтирования логов
 ├─ Dockerfile                   # образ приложения
-├─ docker-compose.yml           # dev: build из исходников
+├─ docker-compose.yml           # dev: сборка из исходников
 ├─ docker-compose.prod.yml      # prod: запуск готового образа
 └─ .github/workflows/deploy.yml # CI/CD
 ```

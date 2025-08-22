@@ -31,7 +31,7 @@ services:
       postgres
       -c logging_collector=on
       -c log_directory=/var/lib/postgresql
-      -c log_filename='postgresql-%a.log'
+      -c log_filename='postgresql-%Y-%m-%d.log'
       -c log_truncate_on_rotation=on
       -c log_rotation_age=1d
     healthcheck:
