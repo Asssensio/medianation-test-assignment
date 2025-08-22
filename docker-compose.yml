@@ -28,7 +28,7 @@ services:
     command: >
       postgres
       -c logging_collector=on
-      -c log_directory=/var/log/postgresql/data/pg_log
+      -c log_directory=/var/lib/postgresql/data/pg_log
       -c log_filename='postgresql-%a.log'
       -c log_truncate_on_rotation=on
       -c log_rotation_age=1d
