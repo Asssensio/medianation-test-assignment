@@ -88,7 +88,7 @@ jobs:
             docker pull "${DOCKERHUB_USERNAME}/medianation-app:latest"
             docker compose -f docker-compose.prod.yml up -d
 
-            # --- ПРОСТОЙ SMOKЕ-ТЕСТ ---
+            # --- SMOKЕ-ТЕСТ ---
             # даём сервису стартануть и один раз проверяем /posts
             sleep 25
             docker run --rm --network host curlimages/curl:8.7.1 -f http://127.0.0.1:8080/posts
